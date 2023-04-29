@@ -8,6 +8,28 @@ bm_header bm_list_head = {0, 0, 0x0 } ;
 void * sibling (void * h)
 {
 	// returns the header address of the suspected sibling block of h.
+	bm_header_ptr curr_header = (bm_header_ptr) h;
+	size_t size_index = bm_list_head.size;
+
+	bm_header_ptr itr ;
+	for (itr = bm_list_head.next ; itr != 0x0 ; itr = itr->next) {
+		size_index += itr->size;
+
+		if (itr->next == curr_header) {
+			int LR = (size_index / itr->size) % 2;
+			/*0 : h is left node   1 : h is right node*/
+			if (!LR) { 	// left node
+				if (curr_header->size == curr_header->next->size) {
+					return curr_header->next;
+				}
+			} else {	// right node
+				if (itr->size == curr_header->size) {
+					return itr;
+				}
+			}
+			return NULL;
+		}
+	}
 }
 
 int fitting (size_t s) 
