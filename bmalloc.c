@@ -17,7 +17,7 @@ void * sibling (void * h)
 
 		if (itr->next == curr_header) {
 			int LR = (size_index / itr->size) % 2;
-			/*0 : h is left node   1 : h is right node*/
+			/* 0 : h is left node   1 : h is right node */
 			if (!LR) { 	// left node
 				if (curr_header->size == curr_header->next->size) {
 					return curr_header->next;
@@ -35,7 +35,13 @@ void * sibling (void * h)
 int fitting (size_t s) 
 {
 	// returns the size field value of a fitting block to accommodate s bytes.
-
+	int size;
+	for (size = 4096; size >= 16; size >> 2) {
+		if (s >= size) {
+			return size;
+		}
+	}
+	return -1;
 }
 
 void * bmalloc (size_t s) 
