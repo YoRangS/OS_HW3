@@ -1,6 +1,6 @@
 #include <unistd.h>
 #include <stdio.h>
-#include "bmalloc.h" 
+#include "bmalloc.h"
 
 bm_option bm_mode = BestFit ;
 bm_header bm_list_head = {0, 0, 0x0 } ;
@@ -47,8 +47,8 @@ int fitting (size_t s)
 void * bmalloc (size_t s) 
 {
 	// allocates a buffer of s-bytes and returns its starting address.
-
-	return 0x0 ; // erase this
+	void* addr = mmap(NULL, s, PROT_READ | PROT_WRITE, MAP_ANONYMOUS, -1, 0);
+	return addr;
 }
 
 void bfree (void * p) 
