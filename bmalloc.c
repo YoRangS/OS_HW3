@@ -47,6 +47,7 @@ int fitting (size_t s)
 void * bmalloc (size_t s) 
 {
 	// allocates a buffer of s-bytes and returns its starting address.
+
 	return 0x0 ; // erase this
 }
 
@@ -66,6 +67,7 @@ void * brealloc (void * p, size_t s)
 void bmconfig (bm_option opt) 
 {
 	// set the space management scheme as BestFit, or FirstFit.
+	bm_mode = opt;
 }
 
 
