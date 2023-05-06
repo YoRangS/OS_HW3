@@ -1,6 +1,7 @@
 #include <unistd.h>
 #include <stdio.h>
-#include "bmalloc.h" 
+#include "bmalloc.h"
+#include <sys/mman.h>
 
 bm_option bm_mode = BestFit ;
 bm_header bm_list_head = {0, 0, 0x0 } ;
@@ -16,7 +17,7 @@ void * sibling (void * h)
 		size_index += itr->size;
 
 		if (itr->next == curr_header) {
-			int LR = (size_index / itr->size) % 2;
+			int LR = (size_index / curr_header->size) % 2;
 			/* 0 : h is left node   1 : h is right node */
 			if (!LR) { 	// left node
 				if (curr_header->size == curr_header->next->size) {
@@ -36,8 +37,8 @@ int fitting (size_t s)
 {
 	// returns the size field value of a fitting block to accommodate s bytes.
 	int size;
-	for (size = 4096; size >= 16; size >> 2) {
-		if (s >= size) {
+	for (size = 4096; size >= 16; size >> 1) {
+		if (s > (size >> 1) - 9) {
 			return size;
 		}
 	}
@@ -48,7 +49,73 @@ void * bmalloc (size_t s)
 {
 	// allocates a buffer of s-bytes and returns its starting address.
 
-	return 0x0 ; // erase this
+	////////////////////////////////
+	// Put the header of the block to be allocated according to the bm_mode into the fit_header.
+	// * If bm_list_head.next == 0x0, fit_header becomes 0x0 because it does not execute the for loop.
+	size_t fit_size = fitting(s);
+	size_t fit_block = 8192;
+	bm_header_ptr fit_header = 0x0;						// Variable to find the least size block among allocable blocks when Bestfit.				
+	bm_header_ptr prv_header = 0x0;						// Save the previous header for brealloc.
+	bm_header_ptr itr ;
+	for (itr = bm_list_head.next ; itr != 0x0 ; itr = itr->next) {
+		if (itr->size >= fit_size && itr->used == 0) {	// If it can be assigned to itr
+			if (bm_mode == BestFit) {					// BestFit
+				if (fit_block > fit_size) {
+					fit_block = fit_size;
+					fit_header = itr;
+				}
+				if (itr->size == fit_size) break;
+			} else {									// FirstFit
+				fit_header = itr;
+				break;
+			}
+			prv_header = itr;
+		}
+	}
+	/////////////////////////////////
+	// Create new page
+	if (fit_header == 0x0) {
+		void* addr = mmap(NULL, 4096, PROT_READ | PROT_WRITE, MAP_ANONYMOUS, -1, 0);
+		bm_header_ptr curr_header = (bm_header_ptr)addr;
+		curr_header->used = 0;
+		curr_header->size = 12;
+		curr_header->next = NULL;
+		
+		void* payload = addr + sizeof(bm_header);
+
+		if (bm_list_head.next == 0x0) {					// When you first create a page
+			bm_list_head.next = payload;				
+		} else prv_header->next->next = payload;		// When you create the next page (prv_header->next->next = 0x0)
+	}
+	/////////////////////////////////
+	// Split up to fitting size and allocate it in
+	void* original_next = fit_header->next;
+	size_t i;
+	for (i = fit_header->size; i >= fit_size; i >> 1) {
+		// Make right side block
+		void* next_addr = mmap(NULL, i >> 1, PROT_READ | PROT_WRITE, MAP_ANONYMOUS, -1, 0);
+		int x = 0;
+		size_t t = i >> 1;
+		while (t > 1) {
+			t >>= 1;
+			x++;
+		}
+		bm_header_ptr next_header = (bm_header_ptr)next_addr;
+		next_header->used = 0;
+		next_header->size = x;
+		next_header->next = original_next;
+
+		// Make left side block
+		void* curr_addr = brealloc(prv_header, i >> 1);
+		bm_header_ptr curr_header = (bm_header_ptr)curr_addr;
+		curr_header->next = next_addr;
+
+		original_next = next_addr;
+	}
+
+	void* return_addr = prv_header->next + sizeof(bm_header);
+	
+	return return_addr;
 }
 
 void bfree (void * p) 
