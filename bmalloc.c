@@ -123,16 +123,16 @@ void * bmalloc (size_t s)
 		next_header->next = original_next;
 
 		// Make left side block
-		curr_addr = brealloc(prv_header, numToExpo(i-1));  				// If prv_header is 0x0, we realloc bm_list_head.next
+		curr_addr = brealloc(prv_header != 0x0 ? prv_header->next : bm_list_head.next, numToExpo(i-1));  				// If prv_header is 0x0, we realloc bm_list_head.next
 
-		if(numToExpo(i-1) == fit_size) {
-			bm_header_ptr curr_header = (bm_header_ptr)curr_addr;
-			curr_header->used = 1;
-			curr_header->size = i-1;
-			curr_header->next = next_addr;
+		bm_header_ptr curr_header = (bm_header_ptr)curr_addr;
+		curr_header->used = 1;
+		curr_header->size = i-1;
+		curr_header->next = next_addr;
 
+		if (curr_addr != bm_list_head.next) {
 			prv_header->next = curr_addr;
-        }
+		}
 		original_next = next_addr;
 	}
 	void* return_addr;
@@ -156,8 +156,19 @@ void * brealloc (void * p, size_t s)
 {
 	// resize the allocated memory buffer into s bytes.
 	// As the result of this operation, the data may be immigrated to a different address, as like realloc possibly does.
+	bm_header_ptr curr_header = (bm_header_ptr) p;
+	munmap(p, numToExpo(curr_header->size));
+	void* addr = mmap(NULL, s, PROT_READ | PROT_WRITE, MAP_ANONYMOUS, -1, 0);
+	bm_header_ptr new_header = (bm_header_ptr) addr;
+	new_header->used = curr_header->used;
+	new_header->size = s;
+	if (curr_header->size < s) {
+		new_header->next = curr_header->next->next;
+	} else {
+		new_header->next = curr_header->next;
+	}
 
-	return 0x0 ; // erase this 
+	return p ;
 }
 
 void bmconfig (bm_option opt) 
@@ -187,5 +198,11 @@ bmprint ()
 	printf("=================================================\n") ;
 
 	//TODO: print out the stat's.
-
+	int total_memory = 0;
+	int given_memory = 0;
+	int available_memory = 0;
+	int inter_frag = 0;
+	for (itr = bm_list_head.next, i = 0 ; itr != 0x0 ; itr = itr->next, i++) {
+		
+	}
 }
