@@ -1,10 +1,29 @@
 #include <unistd.h>
 #include <stdio.h>
+#include <math.h>
 #include "bmalloc.h"
 #include <sys/mman.h>
 
 bm_option bm_mode = BestFit ;
 bm_header bm_list_head = {0, 0, 0x0 } ;
+
+size_t numToExpo(size_t n) {
+   size_t res = 0;
+   while (n > 1) {
+      n >>= 1;
+      res++;
+   }
+   return res;
+}
+
+size_t expoToNum(size_t n) {
+    size_t result = 1;
+	size_t i;
+    for (i = 0; i < n; i++) {
+        result *= 2;
+    }
+    return result;
+}
 
 void * sibling (void * h)
 {
@@ -56,6 +75,7 @@ void * bmalloc (size_t s)
 	size_t fit_block = 8192;
 	bm_header_ptr fit_header = 0x0;						// Variable to find the least size block among allocable blocks when Bestfit.				
 	bm_header_ptr prv_header = 0x0;						// Save the previous header for brealloc.
+	bm_header_ptr tmp = 0x0;
 	bm_header_ptr itr ;
 	for (itr = bm_list_head.next ; itr != 0x0 ; itr = itr->next) {
 		if (itr->size >= fit_size && itr->used == 0) {	// If it can be assigned to itr
@@ -63,14 +83,15 @@ void * bmalloc (size_t s)
 				if (fit_block > fit_size) {
 					fit_block = fit_size;
 					fit_header = itr;
+					prv_header = tmp;
 				}
 				if (itr->size == fit_size) break;
 			} else {									// FirstFit
 				fit_header = itr;
 				break;
 			}
-			prv_header = itr;
 		}
+		tmp = itr;
 	}
 	/////////////////////////////////
 	// Create new page
@@ -86,41 +107,41 @@ void * bmalloc (size_t s)
 		if (bm_list_head.next == 0x0) {					// When you first create a page
 			bm_list_head.next = addr;
 			fit_header = addr;				
-		} else prv_header->next->next = addr;		// When you create the next page (prv_header->next->next = 0x0)
+		} else tmp->next = addr;						// When you create the next page
 	}
 	/////////////////////////////////
 	// Split up to fitting size and allocate it in
 	void* original_next = fit_header->next;
+	void* curr_addr;
 	size_t i;
-	for (i = fit_header->size; i > fit_size; i >> 1) {
+	for (i = fit_header->size; i > expoToNum(fit_size); i--) {
 		// Make right side block
-		void* next_addr = mmap(NULL, i >> 1, PROT_READ | PROT_WRITE, MAP_ANONYMOUS, -1, 0);
-		int x = 0;
-		size_t t = i >> 1;
-		while (t > 1) {
-			t >>= 1;
-			x++;
-		}
+		void* next_addr = mmap(NULL, numToExpo(i-1), PROT_READ | PROT_WRITE, MAP_ANONYMOUS, -1, 0);
 		bm_header_ptr next_header = (bm_header_ptr)next_addr;
 		next_header->used = 0;
-		next_header->size = x;
+		next_header->size = i-1;
 		next_header->next = original_next;
 
 		// Make left side block
-		void* curr_addr = brealloc(prv_header, i >> 1);
+		curr_addr = brealloc(prv_header, numToExpo(i-1));  				// If prv_header is 0x0, we realloc bm_list_head.next
 
-		if(i >> 1 == fit_size) {
+		if(numToExpo(i-1) == fit_size) {
 			bm_header_ptr curr_header = (bm_header_ptr)curr_addr;
 			curr_header->used = 1;
-			curr_header->size = x;
+			curr_header->size = i-1;
 			curr_header->next = next_addr;
 
 			prv_header->next = curr_addr;
         }
 		original_next = next_addr;
 	}
-
-	void* return_addr = prv_header->next + sizeof(bm_header);
+	void* return_addr;
+	if (curr_addr == bm_list_head.next) {
+		return_addr = curr_addr + sizeof(bm_header);
+	}
+	else {
+		return_addr = prv_header->next + sizeof(bm_header);
+	}
 	
 	return return_addr;
 }
