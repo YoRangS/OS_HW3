@@ -32,6 +32,7 @@ void * sibling (void * h)
 	size_t size_index = bm_list_head.size;
 
 	bm_header_ptr itr ;
+	bm_header_ptr prv ;
 	for (itr = bm_list_head.next ; itr != 0x0 ; itr = itr->next) {
 		size_index += itr->size;
 
@@ -40,15 +41,20 @@ void * sibling (void * h)
 			/* 0 : h is left node   1 : h is right node */
 			if (!LR) { 	// left node
 				if (curr_header->size == curr_header->next->size) {
-					return curr_header->next;
+					bm_header_ptr s = curr_header->next;
+					curr_header->next = s->next;
+					s->next = prv;
+					return s;
 				}
 			} else {	// right node
 				if (itr->size == curr_header->size) {
+					itr->next = prv;
 					return itr;
 				}
 			}
 			return NULL;
 		}
+		prv = itr ;
 	}
 }
 
@@ -150,6 +156,35 @@ void bfree (void * p)
 {
 	// free the allocated buffer starting at pointer p.
 	bm_header_ptr curr_header = (bm_header_ptr) p;
+	bm_header_ptr s = (bm_header_ptr) sibling(p);
+	bm_header_ptr prv;
+	int LR;
+	if (s->next->next == p) { // p is left
+		LR = 0;
+		prv = s->next;
+		s->next = curr_header->next;
+		curr_header->next = s;
+	} else {			// p is right
+		LR = 1;
+		prv = s->next;
+		s->next = p;
+	}
+
+	void* merge = mmap(NULL, expoToNum(curr_header->size) * 2, PROT_READ | PROT_WRITE, MAP_ANONYMOUS, -1, 0);
+	bm_header_ptr merge_header = (bm_header_ptr)merge;
+	merge_header->used = 0;
+	merge_header->size = curr_header->size + 1;
+
+	if (!LR) {			// p is left
+		prv->next = merge;
+		merge_header->next = s->next;
+	} else {			// p is right
+		prv->next = merge;
+		merge_header->next = curr_header->next;
+	}
+
+
+	// 작업 끝나고 munmap하자
 }
 
 void * brealloc (void * p, size_t s) 
