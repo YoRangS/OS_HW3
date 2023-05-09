@@ -84,14 +84,15 @@ void * bmalloc (size_t s)
 		void* payload = addr + sizeof(bm_header);
 
 		if (bm_list_head.next == 0x0) {					// When you first create a page
-			bm_list_head.next = payload;				
-		} else prv_header->next->next = payload;		// When you create the next page (prv_header->next->next = 0x0)
+			bm_list_head.next = addr;
+			fit_header = addr;				
+		} else prv_header->next->next = addr;		// When you create the next page (prv_header->next->next = 0x0)
 	}
 	/////////////////////////////////
 	// Split up to fitting size and allocate it in
 	void* original_next = fit_header->next;
 	size_t i;
-	for (i = fit_header->size; i >= fit_size; i >> 1) {
+	for (i = fit_header->size; i > fit_size; i >> 1) {
 		// Make right side block
 		void* next_addr = mmap(NULL, i >> 1, PROT_READ | PROT_WRITE, MAP_ANONYMOUS, -1, 0);
 		int x = 0;
@@ -107,9 +108,15 @@ void * bmalloc (size_t s)
 
 		// Make left side block
 		void* curr_addr = brealloc(prv_header, i >> 1);
-		bm_header_ptr curr_header = (bm_header_ptr)curr_addr;
-		curr_header->next = next_addr;
 
+		if(i >> 1 == fit_size) {
+			bm_header_ptr curr_header = (bm_header_ptr)curr_addr;
+			curr_header->used = 1;
+			curr_header->size = x;
+			curr_header->next = next_addr;
+
+			prv_header->next = curr_addr;
+        }
 		original_next = next_addr;
 	}
 
@@ -121,6 +128,7 @@ void * bmalloc (size_t s)
 void bfree (void * p) 
 {
 	// free the allocated buffer starting at pointer p.
+	bm_header_ptr curr_header = (bm_header_ptr) p;
 }
 
 void * brealloc (void * p, size_t s) 
