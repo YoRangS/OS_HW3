@@ -119,13 +119,13 @@ void * bmalloc (size_t s)
 		curr_header->used = 1;
 		curr_header->size = 12;
 		curr_header->next = NULL;
-		void* payload = addr + sizeof(bm_header);
 
 		if (bm_list_head.next == 0x0) {					// When you first create a page
 			bm_list_head.next = addr;
 			fit_header = addr;				
 		} else {										// When you create the next page
-			tmp->next = addr;					
+			tmp->next = addr;
+			prv_header = tmp;					
 			fit_header = addr;
 		}
 	}
@@ -133,7 +133,7 @@ void * bmalloc (size_t s)
 	printf("DEBUG: split and allocate %p\n", fit_header);
 	// Split up to fitting size and allocate it in
 	void* original_next = fit_header->next;
-	void* curr_addr;
+	void* curr_addr = NULL;
 	size_t i;
 	printf("%p\n", fit_header);
 	printf("before for! %p\n", fit_header->next);
@@ -157,10 +157,10 @@ void * bmalloc (size_t s)
 		curr_header->used = 1;
 		curr_header->size = i-1;
 		curr_header->next = next_addr;
-		if (curr_addr != bm_list_head.next) {
-			printf("$$\n");
+		if (prv_header != 0) {
+			printf("$$%p\n", prv_header);
 			prv_header->next = curr_addr;
-		}
+		} else bm_list_head.next = curr_header;
 		original_next = next_addr;
 		printf("DEBUG: %ld / finish left side\n", i);
 	}
@@ -168,12 +168,17 @@ void * bmalloc (size_t s)
 	printf("%p\n", prv_header);
 	void* return_addr;
 	if (curr_addr == bm_list_head.next) {
+		bm_header_ptr c = (bm_header_ptr)curr_addr;
+		c->used = 1;
 		return_addr = curr_addr + sizeof(bm_header);
 	}
 	else {
+		bm_header_ptr c = (bm_header_ptr)(prv_header != NULL ? prv_header->next : fit_header);
+		c->used = 1;
 		return_addr = (prv_header != NULL ? prv_header->next : fit_header) + sizeof(bm_header);
 	}
 	
+	printf("we will return this!! %p\n", return_addr);
 	return return_addr;
 }
 
@@ -182,11 +187,14 @@ void bfree (void * p)
 	// free the allocated buffer starting at pointer p.
 	
 	void* cp = p - sizeof(bm_header);
+	printf("bfree s: %ld\n", sizeof(bm_header));
+	printf("bfree cp: %p\n", cp);
 	while (1) {
 		// printf("bfree: start\n");
 		bm_header_ptr curr_header = (bm_header_ptr) cp;
 		if (curr_header->size == 12) {
-			// printf("12 break\n");
+
+			printf("12 break\n");
 			break;
 		}
 		bm_header_ptr s = (bm_header_ptr) sibling(cp);
@@ -241,18 +249,19 @@ void * brealloc (void * p, size_t s)
 	printf("start realloc--------------------------\n");
 	bm_header_ptr curr_header = (bm_header_ptr) p;
 	bm_header curr = *curr_header;
-	munmap(p, numToExpo(curr_header->size));
 	void* addr = mmap(NULL, s, PROT_READ | PROT_WRITE, MAP_SHARED | MAP_ANONYMOUS, -1, 0);
+	printf("addr in realloc %p\n", addr);
 	bm_header_ptr new_header = (bm_header_ptr) addr;
 	new_header->used = curr.used;
 	new_header->size = numToExpo(s);
-	printf("!!!\n");
+	printf("!!!%p\n", curr.next);
 	if (curr.size < numToExpo(s)) {
 		new_header->next = curr.next->next;
 	} else {
 		new_header->next = curr.next;
 	}
 	printf("end realloc--------------------------\n");
+	munmap(p, numToExpo(curr_header->size));
 	return addr ;
 }
 
