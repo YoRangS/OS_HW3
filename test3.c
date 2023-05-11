@@ -105,7 +105,11 @@ int remove_beginning(LinkedList *list) {
 
 	printf("delete Node(%p) at beginning: '%d' '%s' '%p' \n", oldFirst,oldFirst->key, oldFirst->string, oldFirst->next);
 
+	printf("oldFirst       : %p\n", oldFirst);
+	printf("oldFirst->next : %p\n", oldFirst->next);
 	bfree(list->first); 			//free it
+	printf("oldFirst       : %p\n", oldFirst);
+	printf("oldFirst->next : %p\n", oldFirst->next);
 	list->first = oldFirst->next;
 	oldFirst = NULL;
 
@@ -175,13 +179,19 @@ void free_list(LinkedList *list) {
 	if (list != NULL && list->size > 0) {
 		Node * startN = list->first;
 		Node * temp = list->first;
+		printf("list  ->  first : %p\n", list->first);
 
 		do {
+			printf("  s  t  a  r  t\n");
 			bfree(temp);
+			bmprint();
+			printf("  b  f  r  e  e  (  t  e  m  p  )  \n");
 			startN = startN->next;
+			printf("  e  n  d\n");
 			temp = startN;
 		} while (startN != NULL);
 
+		printf("^^^^^^^^^^^^^^^^^^^^^^^^^6\n");
 		bfree(list);
 	}
 }
