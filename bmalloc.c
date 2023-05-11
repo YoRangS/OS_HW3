@@ -28,21 +28,21 @@ size_t expoToNum(size_t n) {
 void * sibling (void * h)
 {
 	// returns the header address of the suspected sibling block of h.
-	printf("	sibling		%p\n", h);
+	// printf("	sibling		%p\n", h);
 	bm_header_ptr curr_header = (bm_header_ptr) h;
-	printf("sibling size: %d\n", curr_header->size);
+	// printf("sibling size: %d\n", curr_header->size);
 	size_t size_index = 0;
 	if (curr_header == bm_list_head.next) {
 		if (curr_header->size == (curr_header->next != NULL ? curr_header->next->size : curr_header->size) && curr_header->size != 12) return curr_header->next;
-		printf("HIHI\n");
+		// printf("HIHI\n");
 		return NULL;
 	}
 	bm_header_ptr itr ;
 	bm_header_ptr prv = NULL;
 	for (itr = bm_list_head.next ; itr != 0x0 ; itr = itr->next) {
-		printf("===sibling===%p\n", itr);
+		// printf("===sibling===%p\n", itr);
 		size_index += expoToNum(itr->size);
-		printf("---sibling---%p\n", curr_header);
+		// printf("---sibling---%p\n", curr_header);
 
 		if (itr->next == curr_header && curr_header->size != 12) {
 			int LR = (size_index / expoToNum(curr_header->size)) % 2;
@@ -54,7 +54,7 @@ void * sibling (void * h)
 					// curr_header->next = s->next;
 					// s->next = prv->next;
 					// printf("##		curr / curr->next / s->next		%p / %p / %p \n", curr_header, curr_header->next, s->next);
-					printf("sibling : return s\n");
+					// printf("sibling : return s\n");
 					return s;
 				}
 			} else {	// right node
@@ -62,17 +62,17 @@ void * sibling (void * h)
 					// printf("##		itr / itr->next / curr / curr->next			%p/ %p / %p / %p \n", itr, itr->next, curr_header, curr_header->next);
 					// itr->next = prv;
 					// printf("##		itr / itr->next / curr / curr->next			%p/ %p / %p / %p \n", itr, itr->next, curr_header, curr_header->next);
-					printf("sibling : return itr\n");
+					// printf("sibling : return itr\n");
 					return itr;
 				}
 			}
-			printf("sibling : return NULL\n");
+			// printf("sibling : return NULL\n");
 			return NULL;
 		}
-		printf("sibling : prv = itr\n");
+		// printf("sibling : prv = itr\n");
 		prv = itr ;
 		if (itr->next == curr_header && curr_header->size == 12) {
-			printf("sibling : return prv\n");
+			// printf("sibling : return prv\n");
 			// return (void*)prv;
 			return NULL;
 		}
@@ -209,12 +209,12 @@ void bfree (void * p)
 	// printf("bfree s: %ld\n", sizeof(bm_header));
 	// printf("bfree cp: %p\n", cp);
 	int first = 1;
-	printf("bfree: START %p\n", cp);
+	// printf("bfree: START %p\n", cp);
 	while (1) {
-		printf("bfree: start %p\n", cp);
+		// printf("bfree: start %p\n", cp);
 		bm_header_ptr curr_header = (bm_header_ptr) cp;
 		bm_header_ptr s = (bm_header_ptr) sibling(cp);
-		printf("finish sibling : %p\n", s);
+		// printf("finish sibling : %p\n", s);
 		////////////////////////////////////////////////////
 		// get prv
 		size_t size_index = 0;
@@ -240,7 +240,7 @@ void bfree (void * p)
 		/////////////////////////////////////////////////////
 		// sibling == null or sibling->used == 1
 		if (s == NULL || (s != NULL && s->used == 1)) {
-			printf("null || used break\n");
+			// printf("null || used break\n");
 			if(first == 1) {
 				// bm_header curr = *curr_header;
 				// munmap(cp, expoToNum(curr_header->size));
@@ -278,7 +278,7 @@ void bfree (void * p)
 				// }
 				curr_header->used = 0;
 			}
-			printf("finish null || used break\n");
+			// printf("finish null || used break\n");
 			break;
 		}
 		/////////////////////////////////////////////////////////
@@ -306,7 +306,7 @@ void bfree (void * p)
 			// }
 			// printf("12 break\n");
 			// munmap(cp, 4096);
-			printf("000000 prv->next / curr_header->next : %p / %p\n", prv->next, curr_header->next);
+			// printf("000000 prv->next / curr_header->next : %p / %p\n", prv->next, curr_header->next);
 			prv->next = curr_header->next;
 			munmap(cp, 4096);
 			break;
@@ -329,42 +329,42 @@ void bfree (void * p)
 		// 	printf("NO TRICK@@@@@@@@@@@@@@@@@@@@@@@@@@\n");
 		// }
 
-		printf("bfree: merge\n");
+		// printf("bfree: merge\n");
 
 		bm_header cp_header = *curr_header;
 		bm_header s_header = *(bm_header_ptr)s;
 
 		void* old_cp = cp;
-		printf("munmap: %p\n", old_cp);
+		// printf("munmap: %p\n", old_cp);
 		munmap(old_cp, expoToNum(((bm_header_ptr)old_cp)->size));
-		printf("munmap: %p\n", s);
+		// printf("munmap: %p\n", s);
 		munmap(s, expoToNum(((bm_header_ptr)s)->size));
 
 		void* merge = mmap(cp, expoToNum(cp_header.size) * 2, PROT_READ | PROT_WRITE, MAP_SHARED | MAP_ANONYMOUS, -1, 0);
-		printf("merge pointer : %p\n", merge);
+		// printf("merge pointer : %p\n", merge);
 		bm_header_ptr merge_header = (bm_header_ptr)merge;
 		merge_header->used = 0;
 		merge_header->size = cp_header.size + 1;
 
 		if (!LR) {			// cp is left
 			if(prv != NULL) {
-				printf("L PRV->NEXT = merge_header %p / %p\n", prv->next, merge_header);
+				// printf("L PRV->NEXT = merge_header %p / %p\n", prv->next, merge_header);
 				prv->next = merge_header;
 			}
 			else {
 				bm_list_head.next = merge_header;
-				printf("L BM_LIST_HEAD.NEXT->merge_header %p\n", merge_header);
+				// printf("L BM_LIST_HEAD.NEXT->merge_header %p\n", merge_header);
 			}
-			printf("s->next : %p\n", s_header.next);
+			// printf("s->next : %p\n", s_header.next);
 			merge_header->next = s_header.next;
 		} else {			// cp is right
 			if(prv != NULL) {
-				printf("R PRV->NEXT = merge_header %p / %p\n", prv->next, merge_header);
+				// printf("R PRV->NEXT = merge_header %p / %p\n", prv->next, merge_header);
 				prv->next = merge_header;
 			}
 			else {
 				bm_list_head.next = merge_header;
-				printf("R BM_LIST_HEAD.NEXT = merge_header %p\n", merge_header);
+				// printf("R BM_LIST_HEAD.NEXT = merge_header %p\n", merge_header);
 			}
 			merge_header->next = cp_header.next;
 		}
