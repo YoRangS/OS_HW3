@@ -33,7 +33,8 @@ void * sibling (void * h)
 	printf("sibling size: %d\n", curr_header->size);
 	size_t size_index = 0;
 	if (curr_header == bm_list_head.next) {
-		if (curr_header->size == curr_header->next->size && curr_header->size != 12) return curr_header->next;
+		if (curr_header->size == (curr_header->next != NULL ? curr_header->next->size : curr_header->size) && curr_header->size != 12) return curr_header->next;
+		printf("HIHI\n");
 		return NULL;
 	}
 	bm_header_ptr itr ;
