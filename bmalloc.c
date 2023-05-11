@@ -49,18 +49,18 @@ void * sibling (void * h)
 			if (!LR) { 	// left node
 				if (curr_header->size == curr_header->next->size) {
 					bm_header_ptr s = curr_header->next;
-					printf("##		curr / curr->next / s->next		%p / %p / %p \n", curr_header, curr_header->next, s->next);
-					curr_header->next = s->next;
-					s->next = prv->next;
-					printf("##		curr / curr->next / s->next		%p / %p / %p \n", curr_header, curr_header->next, s->next);
+					// printf("##		curr / curr->next / s->next		%p / %p / %p \n", curr_header, curr_header->next, s->next);
+					// curr_header->next = s->next;
+					// s->next = prv->next;
+					// printf("##		curr / curr->next / s->next		%p / %p / %p \n", curr_header, curr_header->next, s->next);
 					printf("sibling : return s\n");
 					return s;
 				}
 			} else {	// right node
 				if (itr->size == curr_header->size) {
-					printf("##		itr / itr->next / curr / curr->next			%p/ %p / %p / %p \n", itr, itr->next, curr_header, curr_header->next);
-					itr->next = prv;
-					printf("##		itr / itr->next / curr / curr->next			%p/ %p / %p / %p \n", itr, itr->next, curr_header, curr_header->next);
+					// printf("##		itr / itr->next / curr / curr->next			%p/ %p / %p / %p \n", itr, itr->next, curr_header, curr_header->next);
+					// itr->next = prv;
+					// printf("##		itr / itr->next / curr / curr->next			%p/ %p / %p / %p \n", itr, itr->next, curr_header, curr_header->next);
 					printf("sibling : return itr\n");
 					return itr;
 				}
@@ -72,7 +72,8 @@ void * sibling (void * h)
 		prv = itr ;
 		if (itr->next == curr_header && curr_header->size == 12) {
 			printf("sibling : return prv\n");
-			return (void*)prv;
+			// return (void*)prv;
+			return NULL;
 		}
 	}
 	// printf("why!\n");
@@ -232,21 +233,33 @@ void bfree (void * p)
 			// printf("null break\n");
 			break;
 		}
-		bm_header_ptr prv = NULL;
+		size_t size_index = 0;
 		int LR = 0;
-		printf("		s->next-next / cp / s		%p / %p / %p\n", s->next->next, cp, s);
-		if (s->next->next == cp) { 					// p is left
-			LR = 0;
-			prv = s->next;
-			s->next = curr_header->next;
-			curr_header->next = s;
-		} else if (s->next->next == s) {			// p is right
-			LR = 1;
-			prv = s->next;
-			s->next = cp;
-		} else {
-			printf("NO TRICK@@@@@@@@@@@@@@@@@@@@@@@@@@\n");
+		bm_header_ptr itr ;
+		bm_header_ptr prv = NULL;
+		for (itr = bm_list_head.next ; itr != 0x0 ; itr = itr->next) {
+			size_index += expoToNum(itr->size);
+
+			if (bm_list_head.next != curr_header) prv = itr ;
+			if (itr->next == curr_header && curr_header->size != 12) {
+				LR = (size_index / expoToNum(curr_header->size)) % 2;
+				break;
+			}
 		}
+
+		// printf("		s->next-next / cp / s		%p / %p / %p\n", s->next->next, cp, s);
+		// if (s->next->next == cp) { 					// p is left
+		// 	LR = 0;
+		// 	prv = s->next;
+		// 	s->next = curr_header->next;
+		// 	curr_header->next = s;
+		// } else if (s->next->next == s) {			// p is right
+		// 	LR = 1;
+		// 	prv = s->next;
+		// 	s->next = cp;
+		// } else {
+		// 	printf("NO TRICK@@@@@@@@@@@@@@@@@@@@@@@@@@\n");
+		// }
 
 		printf("bfree: merge\n");
 
@@ -257,12 +270,12 @@ void bfree (void * p)
 		merge_header->size = curr_header->size + 1;
 
 		if (!LR) {			// cp is left
-			if(prv != NULL) prv->next = merge;
-			else bm_list_head.next = merge;
+			if(prv != NULL) prv->next = merge_header;
+			else bm_list_head.next = merge_header;
 			merge_header->next = s->next;
 		} else {			// cp is right
-			if(prv != NULL) prv->next = merge;
-			else bm_list_head.next = merge;
+			if(prv != NULL) prv->next = merge_header;
+			else bm_list_head.next = merge_header;
 			merge_header->next = curr_header->next;
 		}
 
