@@ -213,34 +213,13 @@ void bfree (void * p)
 		bm_header_ptr curr_header = (bm_header_ptr) cp;
 		bm_header_ptr s = (bm_header_ptr) sibling(cp);
 		printf("finish sibling : %p\n", s);
-		if (curr_header->size == 12) {
-			// 여기 munmap 해야 됨!
-			bm_header_ptr cp_next = curr_header->next;
-			void* clear = mmap(NULL, 4096, PROT_READ | PROT_WRITE, MAP_SHARED | MAP_ANONYMOUS, -1, 0);
-			bm_header_ptr clear_header = (bm_header_ptr) clear;
-			clear_header->used = 0;
-			clear_header->size = 12;
-			clear_header->next = cp_next;
-			curr_header->next = NULL;
-			munmap(cp, 4096);
-			// 이전거 링크하는 기능
-			printf("s->next : %p\n", s);
-			if(s != NULL) {
-				s->next = clear_header;
-				printf("S->NEXT = clear_header %p\n", clear_header);
-			}
-			else {
-				bm_list_head.next = clear_header;
-				printf("BM_LIST_HEAD.NEXT = clear_header %p\n", clear_header);
-			}
-			printf("12 break\n");
-			break;
-		}
+		////////////////////////////////////////////////////
+		// get prv
 		size_t size_index = 0;
 		int LR = 0;
 		bm_header_ptr itr ;
 		bm_header_ptr prv = NULL;
-		for (itr = bm_list_head.next ; itr != 0x0 ; itr = itr->next) {
+		for (itr = bm_list_head.next ; itr != 0x0 ; itr = itr->next) { // get prv
 			size_index += expoToNum(itr->size);
 
 			if (itr->next == curr_header && curr_header->size != 12) {
@@ -256,6 +235,8 @@ void bfree (void * p)
 			}
 			if (bm_list_head.next != curr_header) prv = itr ;
 		}
+		/////////////////////////////////////////////////////
+		// sibling == null or sibling->used == 1
 		if (s == NULL || (s != NULL && s->used == 1)) {
 			printf("null || used break\n");
 			void* clear = mmap(NULL, expoToNum(curr_header->size), PROT_READ | PROT_WRITE, MAP_SHARED | MAP_ANONYMOUS, -1, 0);
@@ -284,7 +265,37 @@ void bfree (void * p)
 			// printf("finish null || used break\n");
 			break;
 		}
+		/////////////////////////////////////////////////////////
+		// max size
+		if (curr_header->size == 12) {
+			// 여기 munmap 해야 됨!
+			bm_header_ptr cp_next = curr_header->next;
+			void* clear = mmap(NULL, 4096, PROT_READ | PROT_WRITE, MAP_SHARED | MAP_ANONYMOUS, -1, 0);
+			bm_header_ptr clear_header = (bm_header_ptr) clear;
+			clear_header->used = 0;
+			clear_header->size = 12;
+			clear_header->next = cp_next;
+			curr_header->next = NULL;
+			// 이전거 링크하는 기능
+			printf("s->next : %p\n", s);
+			if(s != NULL) {
+				s->next = clear_header;
+				printf("S->NEXT = clear_header %p\n", clear_header);
+			}
+			else {
+				if (prv == NULL) bm_list_head.next = clear_header;
+				else prv->next = clear_header;
+				printf("cp : %p\n", cp);
+				printf("BM_LIST_HEAD.NEXT = clear_header %p\n", clear_header);
+			}
+			printf("12 break\n");
+			munmap(cp, 4096);
+			break;
+		}
 
+		////////////////////////////////////////////////////////////
+		// get prv in sibling without for loop (delete)
+		//
 		// printf("		s->next-next / cp / s		%p / %p / %p\n", s->next->next, cp, s);
 		// if (s->next->next == cp) { 					// p is left
 		// 	LR = 0;

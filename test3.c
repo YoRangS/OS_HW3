@@ -158,9 +158,11 @@ int print_list(LinkedList *list) {
 
 	/* iterate through list and print contents */
 	do {
-		printf("Node#%d.string = '%s', .next = '%p' \n", startN->key,startN->string, startN->next);
+		printf("Node#%d.string = '%s', %p.next = '%p' \n", startN->key,startN->string, startN, startN->next);
 		startN = startN->next;
 	} while (startN != NULL);
+
+	bmprint();
 
 	return OK;
 }
