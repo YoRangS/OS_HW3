@@ -208,6 +208,7 @@ void bfree (void * p)
 	void* cp = p - sizeof(bm_header);
 	// printf("bfree s: %ld\n", sizeof(bm_header));
 	// printf("bfree cp: %p\n", cp);
+	int first = 1;
 	while (1) {
 		printf("bfree: start\n");
 		bm_header_ptr curr_header = (bm_header_ptr) cp;
@@ -239,29 +240,31 @@ void bfree (void * p)
 		// sibling == null or sibling->used == 1
 		if (s == NULL || (s != NULL && s->used == 1)) {
 			printf("null || used break\n");
-			void* clear = mmap(NULL, expoToNum(curr_header->size), PROT_READ | PROT_WRITE, MAP_SHARED | MAP_ANONYMOUS, -1, 0);
-			bm_header_ptr clear_header = (bm_header_ptr) clear;
-			clear_header->used = 0;
-			clear_header->size = curr_header->size;
-			clear_header->next = curr_header->next;
-			if(s != NULL) {
-				if (!LR) {			// cp is left
-					if(prv != NULL) {
-						prv->next = clear_header;
-					}
-					else {
-						bm_list_head.next = clear_header;
-					}
-				} else {			// cp is right
-					if(prv != NULL) {
-						prv->next = clear_header;
-					}
-					else {
-						bm_list_head.next->next = clear_header;
+			if(first == 1) {
+				void* clear = mmap(NULL, expoToNum(curr_header->size), PROT_READ | PROT_WRITE, MAP_SHARED | MAP_ANONYMOUS, -1, 0);
+				bm_header_ptr clear_header = (bm_header_ptr) clear;
+				clear_header->used = 0;
+				clear_header->size = curr_header->size;
+				clear_header->next = curr_header->next;
+				if(s != NULL) {
+					if (!LR) {			// cp is left
+						if(prv != NULL) {
+							prv->next = clear_header;
+						}
+						else {
+							bm_list_head.next = clear_header;
+						}
+					} else {			// cp is right
+						if(prv != NULL) {
+							prv->next = clear_header;
+						}
+						else {
+							bm_list_head.next->next = clear_header;
+						}
 					}
 				}
+				munmap(cp, expoToNum(curr_header->size));
 			}
-			munmap(cp, expoToNum(curr_header->size));
 			// printf("finish null || used break\n");
 			break;
 		}
@@ -320,13 +323,14 @@ void bfree (void * p)
 
 		if (!LR) {			// cp is left
 			if(prv != NULL) {
+				printf("L PRV->NEXT = merge_header %p / %p\n", prv->next, merge_header);
 				prv->next = merge_header;
-				printf("L PRV->NEXT = merge_header %p\n", merge_header);
 			}
 			else {
 				bm_list_head.next = merge_header;
 				printf("L BM_LIST_HEAD.NEXT->merge_header %p\n", merge_header);
 			}
+			printf("s->next : %p\n", s->next);
 			merge_header->next = s->next;
 		} else {			// cp is right
 			if(prv != NULL) {
@@ -347,6 +351,7 @@ void bfree (void * p)
 		munmap(s, expoToNum(((bm_header_ptr)s)->size));
 
 		cp = merge;
+		first = 0;
 	}
 }
 
